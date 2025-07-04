@@ -1,5 +1,5 @@
 locals {
-  s3_name                = "codebuild-cache"
+  s3_name                = "codebuild-cache-taniai"
   ecr_name               = "blue-green-ecr"
   codebuild_project_name = "codebuild-project-practice"
   connection_name        = "github-connection"
@@ -9,13 +9,8 @@ resource "aws_s3_bucket" "codebuild" {
   bucket = local.s3_name
 }
 
-resource "aws_s3_bucket_acl" "example" {
-  bucket = aws_s3_bucket.codebuild.id
-  acl    = "private"
-}
-
 data "aws_ecr_repository" "ecr_repository" {
-  name = locals.ecr_name
+  name = local.ecr_name
 }
 
 data "aws_iam_policy_document" "assume_role" {
@@ -101,22 +96,22 @@ resource "aws_codebuild_project" "codebuild" {
   environment {
     # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-compute-types.html#environment.types
     compute_type = "BUILD_GENERAL1_SMALL"
-    type         = "ARM_CONTAINER"
+    type         = "LINUX_CONTAINER"
 
     # https://docs.aws.amazon.com/codebuild/latest/userguide/build-env-ref-available.html
     # EC2インスタンスは"aws/codebuild/ami/amazonlinux-x86_64-base:latest"や
     # "aws/codebuild/ami/amazonlinux-arm-base:latest"のみ。基本的には自前でビルドが必要。
-    image                       = "aws/codebuild/standard:7.0" # Ubuntu 22.04
+    image                       = "aws/codebuild/standard:6.0" # Ubuntu 22.04
     image_pull_credentials_type = "CODEBUILD"
   }
 
   source {
     type                = "GITHUB"
-    location            = "https://github.com/jnytnai0613/terraform_for_aws_practice"
+    location            = "https://github.com/jnytnai0613/blue-green-upgarade-blueprints"
     report_build_status = true
-    #buildspec = "{ビルドスペックを配置のパス}
+    buildspec           = "system/assets/sample-app/container/buildspec.yml"
     auth {
-      type     = "CODECONNECTION"
+      type     = "CODECONNECTIONS"
       resource = aws_codeconnections_connection.github.arn
     }
   }
@@ -129,6 +124,9 @@ resource "aws_codebuild_project" "codebuild" {
   }
 }
 
+# GitHubのsetting/webhookに反映される
+# 初回apply時はこのresourceはコメントアウトしておく
+# CodeConnectionを承認しないと、ARNの無効エラーが出る
 resource "aws_codebuild_webhook" "github" {
   project_name = aws_codebuild_project.codebuild.name
   build_type   = "BUILD"
@@ -140,7 +138,7 @@ resource "aws_codebuild_webhook" "github" {
 
     filter {
       type    = "FILE_PATH"
-      pattern = "system/assets/sample-app/container/*"
+      pattern = "system/assets/sample-app/container/.*"
     }
   }
 }
