@@ -134,7 +134,7 @@ resource "aws_codebuild_project" "codebuild" {
   }
 }
 
-# GitHubのsetting/webhookに反映される
+# GitHubのSettings/Webhooksに反映される
 # 初回apply時はこのresourceはコメントアウトしておく
 # CodeConnectionを承認しないと、ARNの無効エラーが出る
 resource "aws_codebuild_webhook" "github" {
