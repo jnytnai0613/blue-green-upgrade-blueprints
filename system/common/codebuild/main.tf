@@ -36,6 +36,7 @@ data "aws_iam_policy_document" "codebuild" {
     effect = "Allow"
     sid    = "ECRAccess"
     actions = [
+      "ecr:GetAuthorizationToken",
       "ecr:CompleteLayerUpload",
       "ecr:UploadLayerPart",
       "ecr:InitiateLayerUpload",
