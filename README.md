@@ -15,7 +15,7 @@ EKSを作成するModuleは[こちらを参照](https://github.com/jnytnai0613/t
 │   ├── assets        # サンプルアプリや各種yamlファイル
 │   ├── blue-cluster  # EKS 1.33 クラスター (Green)
 │   ├── green-cluster # EKS 1.32 クラスター (Blue)
-│   ├── common        # 共通の VPC, Route53 Hosted Zone
+│   ├── common        # 共通の VPC, Route53 Hosted Zone, CodeBuild
 │
 └── modules/cluster # EKS作成モジュール
 ```
