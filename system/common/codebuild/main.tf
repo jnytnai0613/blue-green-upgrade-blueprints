@@ -49,6 +49,15 @@ data "aws_iam_policy_document" "codebuild" {
 
   statement {
     effect = "Allow"
+    sid    = "ECRAuth"
+    actions = [
+      "ecr:GetAuthorizationToken"
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    effect = "Allow"
     sid    = "CloudWatchLogsAccess"
     actions = [
       "logs:CreateLogGroup",
