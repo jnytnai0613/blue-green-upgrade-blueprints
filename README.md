@@ -66,7 +66,7 @@ resource "aws_eks_pod_identity_association" "external-dns-identity" {
 ## 手順
 ### 1. 共通リソースデプロイ
 ```sh
-cd common
+cd system/common/network
 terraform init
 terraform plan
 terraform apply
@@ -92,7 +92,7 @@ $ aws dynamodb put-item --table-name test-dynamodb --item '{"UserId": {"S": "3"}
 
 ### 2. Blue EKSクラスタデプロイ
 ```sh
-$ cd syste/blue-cluster
+$ cd system/blue-cluster
 $ terraform init
 $ terraform plan
 $ terraform apply
@@ -121,7 +121,7 @@ $ kubectl apply -f system/assets/sample-app/blue/fastapi.yaml
 
 ### 3. Green EKSクラスタデプロイ
 ```sh
-$ cd syste/blue-cluster
+$ cd system/blue-cluster
 $ terraform init
 $ terraform plan
 $ terraform apply
@@ -158,6 +158,6 @@ Blueと同じドメインでIngressをデプロイします。</br>
 1. Route53のレコードIDが"test-green"になっているAレコード、AAAAレコード、TXTレコードを削除し、ExternalDNSによって再度登録されるのを待ちます。
 1. これでGreen面の新クラスタに全部のトラフィックが流れます。問題ないことを確認後、以下コマンドでBlue面を削除します。
 ```sh
-$ cd blue-green-upgrade/blue-cluster
+$ cd system/blue-cluster
 $ terraform destroy
 ```
