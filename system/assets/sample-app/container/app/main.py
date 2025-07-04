@@ -3,7 +3,6 @@ import boto3
 
 app = FastAPI()
 
-# test
 @app.get("/")
 def read_root():
     dynamodb = boto3.client("dynamodb", region_name="ap-northeast-1")
