@@ -92,7 +92,7 @@ $ aws dynamodb put-item --table-name test-dynamodb --item '{"UserId": {"S": "3"}
 
 ### 2. Blue EKSクラスタデプロイ
 ```sh
-$ cd blue-cluster
+$ cd syste/blue-cluster
 $ terraform init
 $ terraform plan
 $ terraform apply
@@ -121,7 +121,7 @@ $ kubectl apply -f system/assets/sample-app/blue/fastapi.yaml
 
 ### 3. Green EKSクラスタデプロイ
 ```sh
-$ cd blue-cluster
+$ cd syste/blue-cluster
 $ terraform init
 $ terraform plan
 $ terraform apply
