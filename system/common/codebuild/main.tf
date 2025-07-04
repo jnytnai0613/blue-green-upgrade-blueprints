@@ -117,7 +117,7 @@ resource "aws_codebuild_project" "codebuild" {
 
   source {
     type                = "GITHUB"
-    location            = "https://github.com/jnytnai0613/blue-green-upgarade-blueprints"
+    location            = "https://github.com/jnytnai0613/blue-green-upgrade-blueprints"
     report_build_status = true
     buildspec           = "system/assets/sample-app/container/buildspec.yml"
     auth {
