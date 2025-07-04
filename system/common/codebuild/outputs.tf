@@ -1,4 +1,5 @@
-output "function_arn" {
-  value       = aws_lambda_function.example.arn
-  description = "ARN of the Function"
+output "codebuildn_arn" {
+  value       = aws_codebuild_project.codebuild.arn
+  description = "ARN of the CodeBuild"
 }
+
