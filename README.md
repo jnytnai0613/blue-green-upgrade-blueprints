@@ -8,7 +8,7 @@
 - [Amazon EKS Blueprints for Terraform](https://github.com/aws-ia/terraform-aws-eks-blueprints/tree/main/patterns/blue-green-upgrade)
 
 ## ディレクトリ構成
-EKSを作成するModuleは[こちらを参照](https://github.com/jnytnai0613/terraform_for_aws_practice/tree/main/modules/services/blue-green-cluster)
+EKSを作成するModuleは[こちらを参照](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/tree/main/modules/cluster)
 ```
 .
 ├── system
