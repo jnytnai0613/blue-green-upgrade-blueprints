@@ -9,3 +9,9 @@ patches:
       version: v1alpha1
       kind: Application
       name: fastapi
+  - path: alb-controller-applications-patch.yaml
+    target:
+      group: argoproj.io
+      version: v1alpha1
+      kind: Application
+      name: aws-load-balancer-controller
