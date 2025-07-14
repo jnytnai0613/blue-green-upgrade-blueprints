@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: fast-api-app
+  namespace: app
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: fast-api-app
+  ports:
+  - protocol: TCP
+    port: 80
+    targetPort: 8080

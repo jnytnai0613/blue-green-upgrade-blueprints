@@ -1,0 +1,20 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: externaldns
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/jnytnai0613/blue-green-upgrade-blueprints
+    targetRevision: HEAD
+    path: system/assets/external-dns
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: external-dns
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

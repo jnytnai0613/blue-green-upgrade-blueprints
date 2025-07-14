@@ -1,0 +1,23 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fast-api-app
+  namespace: app
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: "test.jnytnai.click"
+    alb.ingress.kubernetes.io/scheme: "internet-facing"
+    alb.ingress.kubernetes.io/target-type: "ip"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}]'
+spec:
+  ingressClassName: alb
+  rules:
+    - host: "test.jnytnai.click"
+      http:
+        paths:
+        - path: /
+          pathType: Exact
+          backend:
+            service:
+              name: fast-api-app
+              port:
+                number: 80
