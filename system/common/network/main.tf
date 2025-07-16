@@ -6,7 +6,6 @@ locals {
   alb_ingress_controller_policy = "alb-ingress-controller-policy"
   external_dns_role_role        = "external_dns-role"
   external_dns_role_policy      = "external-dns-policy"
-  ecr_name                      = "blue-green-ecr"
   hosted_zone_name              = "jnytnai.click"
   sub_domain_name               = "test"
 }
@@ -63,9 +62,8 @@ resource "aws_route53_record" "ns" {
 }
 
 module "acm" {
-  source  = "terraform-aws-modules/acm/aws"
-  version = "~> 6.0.0"
-
+  source      = "terraform-aws-modules/acm/aws"
+  version     = "~> 6.0.0"
   domain_name = "${local.sub_domain_name}.${local.hosted_zone_name}"
   zone_id     = aws_route53_zone.sub.zone_id
 
@@ -78,14 +76,6 @@ module "acm" {
 
   tags = {
     Name = "${local.sub_domain_name}.${local.hosted_zone_name}"
-  }
-}
-
-resource "aws_ecr_repository" "ecr" {
-  name = local.ecr_name
-
-  image_scanning_configuration {
-    scan_on_push = true
   }
 }
 

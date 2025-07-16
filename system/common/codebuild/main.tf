@@ -35,6 +35,7 @@ data "aws_iam_policy_document" "codebuild" {
   statement {
     effect = "Allow"
     sid    = "ECRAccess"
+
     actions = [
       "ecr:GetAuthorizationToken",
       "ecr:CompleteLayerUpload",
@@ -44,36 +45,43 @@ data "aws_iam_policy_document" "codebuild" {
       "ecr:PutImage",
       "ecr:BatchGetImage"
     ]
+
     resources = [data.aws_ecr_repository.ecr_repository.arn]
   }
 
   statement {
     effect = "Allow"
     sid    = "ECRAuth"
+
     actions = [
       "ecr:GetAuthorizationToken"
     ]
+
     resources = ["*"]
   }
 
   statement {
     effect = "Allow"
     sid    = "CloudWatchLogsAccess"
+
     actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents"
     ]
+
     resources = ["*"]
   }
 
   statement {
     effect = "Allow"
     sid    = "CodeConnectionAccess"
+
     actions = [
       "codeconnections:GetConnectionToken",
       "codeconnections:GetConnection"
     ]
+
     resources = [aws_codeconnections_connection.github.arn]
   }
 }
@@ -116,10 +124,12 @@ resource "aws_codebuild_project" "codebuild" {
   }
 
   source {
-    type                = "GITHUB"
+    type = "GITHUB"
+    # 適宜変更する
     location            = "https://github.com/jnytnai0613/blue-green-upgrade-blueprints"
     report_build_status = true
     buildspec           = "system/assets/sample-app/container/buildspec.yml"
+
     auth {
       type     = "CODECONNECTIONS"
       resource = aws_codeconnections_connection.github.arn
@@ -140,6 +150,7 @@ resource "aws_codebuild_project" "codebuild" {
 resource "aws_codebuild_webhook" "github" {
   project_name = aws_codebuild_project.codebuild.name
   build_type   = "BUILD"
+
   filter_group {
     filter {
       type    = "EVENT"
@@ -150,5 +161,13 @@ resource "aws_codebuild_webhook" "github" {
       type    = "FILE_PATH"
       pattern = "system/assets/sample-app/container/.*"
     }
+  }
+}
+
+resource "aws_ecr_repository" "ecr" {
+  name = local.ecr_name
+
+  image_scanning_configuration {
+    scan_on_push = true
   }
 }
