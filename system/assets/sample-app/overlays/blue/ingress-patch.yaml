@@ -5,4 +5,4 @@ metadata:
   namespace: app
   annotations:
     external-dns.alpha.kubernetes.io/set-identifier: "blue"
-    external-dns.alpha.kubernetes.io/aws-weight: "70"
+    external-dns.alpha.kubernetes.io/aws-weight: "50"
