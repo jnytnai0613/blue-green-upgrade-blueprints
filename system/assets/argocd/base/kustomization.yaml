@@ -3,4 +3,4 @@ kind: Kustomization
 resources:
   - alb-controller-applications.yaml
   - externaldns-applications.yaml
-  #- fastapi-applications.yaml
+  - fastapi-applications.yaml
