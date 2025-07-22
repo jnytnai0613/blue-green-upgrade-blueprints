@@ -4,6 +4,7 @@ metadata:
   name: aws-load-balancer-controller
   namespace: argocd
   annotations:
+    # 起動を一番最初に、削除を一番最後にする
     argocd.argoproj.io/sync-wave: "-1"
   finalizers:
     - resources-finalizer.argocd.argoproj.io
