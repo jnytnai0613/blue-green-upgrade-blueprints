@@ -1,6 +1,6 @@
 # EKS Blue-Green Upgrade with Terraform
 
-このディレクトリは、**Amazon EKS クラスターの Blue-Green アップグレード戦略**を Terraform を用いて実現するための構成です。</br>
+本リポジトリは、**Amazon EKS クラスターの Blue-Green アップグレード戦略**を Terraform を用いて実現するための構成です。</br>
 各バージョンの EKS クラスター（Blue と Green）を並列に管理し、Route53 の加重レコードを活用してトラフィックを段階的に切り替える構成になっています。</br>
 ※本ディレクトリの構成は、 以下文献を参考にし、簡略化したものです。</br>
   また、前者の文献ではバージョンの関係上、AWS LoadBalancer ControllerとExternalDNSでPod Identityを設定せず、アプリケーションでの設定のみとなっておりましたが、本ディレクトリ手順での最新バージョンでは設定可能となっています。
