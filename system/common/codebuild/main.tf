@@ -9,10 +9,6 @@ resource "aws_s3_bucket" "codebuild" {
   bucket = local.s3_name
 }
 
-data "aws_ecr_repository" "ecr_repository" {
-  name = local.ecr_name
-}
-
 data "aws_iam_policy_document" "assume_role" {
   statement {
     effect = "Allow"
@@ -46,7 +42,7 @@ data "aws_iam_policy_document" "codebuild" {
       "ecr:BatchGetImage"
     ]
 
-    resources = [data.aws_ecr_repository.ecr_repository.arn]
+    resources = [aws_ecr_repository.ecr.arn]
   }
 
   statement {
@@ -144,6 +140,7 @@ resource "aws_codebuild_project" "codebuild" {
   }
 }
 
+/*
 # GitHubのSettings/Webhooksに反映される
 # 初回apply時はこのresourceはコメントアウトしておく
 # CodeConnectionを承認しないと、ARNの無効エラーが出る
@@ -163,6 +160,7 @@ resource "aws_codebuild_webhook" "github" {
     }
   }
 }
+*/
 
 resource "aws_ecr_repository" "ecr" {
   name = local.ecr_name
