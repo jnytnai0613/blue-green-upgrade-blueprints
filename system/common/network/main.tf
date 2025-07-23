@@ -34,7 +34,7 @@ module "vpc" {
 /*
 # コストの面からAWS内外の通信はNAT Gateway経由とする
 # AWS内のEKS to DynamoDB間の通信はVPC Endpoint経由でも良い
-# ただ、以下の事例にあるようにAWS内通信はNAT Gatetewayでもいい
+# 以下の事例にあるようにAWS内通信はNAT Gatetewayでもセキュアを保つことが可能
 # https://zenn.dev/simpleform_blog/articles/f048edb9efd2b2
 resource "aws_vpc_endpoint" "dynamodb" {
   vpc_id            = module.vpc.vpc_id
