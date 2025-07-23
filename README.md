@@ -89,7 +89,7 @@ terraform apply
 
 > [!IMPORTANT]
 > このプロジェクトでは、AWS CodeStar Connections（aws_codebuild_webhook.github）を使ってGitHubからのWebhookを受け取り、CIのトリガーにしています。
-> ただし、Webhook は CodeBuild と同時にデプロイできません。まずは AWS CodeStar Connections を承認し、GitHub リポジトリに GitHub App をインストール してくださ> い。
+> ただし、Webhook は CodeBuild と同時にデプロイできません。まずは AWS CodeStar Connections を承認し、GitHub リポジトリに GitHub App をインストールしてください。
 >
 > 参考：[AWS CodeBuild入門：セキュアなCIをTerraformで構築したよ](https://zenn.dev/junya0530/articles/8f3494d0ee8beb)
 >
