@@ -141,12 +141,12 @@ $ terraform apply
 - Pod Identityに紐づけるIAMロール
 
 > [!NOTE]
-> 本構成では、コスト最適化の観点から、AWS 内外を問わず通信は基本的に NAT Gateway 経由としています。</br>
-> 通常、EKS から DynamoDB などの AWS サービスへの通信には VPC エンドポイント（Interface Endpoint）を用いるケースもありますが、以下の事例にもある通り、NAT Gateway を介した通信でもセキュリティを維持しつつコストを抑えることが可能です。
+> 本構成では、コスト最適化の観点から、AWS内外を問わず通信は基本的にNAT Gateway経由としています。</br>
+> 通常、EKSからDynamoDBなどのAWSサービスへの通信にはVPCエンドポイント（Gateway Endpoint）を用いるケースもありますが、以下の事例にもある通り、NAT Gatewayを介した通信でもセキュリティを維持しつつコストを抑えることが可能です。
 >
 > 参考：[【AWSコスト最適化】VPC エンドポイントを消すだけでセキュリティそのままにコストが節約できた](https://zenn.dev/simpleform_blog/articles/f048edb9efd2b2)
 >
-> 現在はコメントしてますが、必要に応じてVPC Endpoint を追加する構成も柔軟に対応可能です。
+> 現在はコメントしてますが、必要に応じてVPC Endpointを追加する構成も柔軟に対応可能です。
 
 #### 1.4. Amazon DynamoDBへデータ投入
 ```sh
