@@ -3,7 +3,7 @@
 本リポジトリは、**Amazon EKS クラスターの Blue-Green アップグレード戦略**を Terraform を用いて実現するための構成です。</br>
 各バージョンの EKS クラスター（Blue と Green）を並列に管理し、Route53 の加重レコードを活用してトラフィックを段階的に切り替える構成になっています。</br>
 ※本ディレクトリの構成は、 以下文献を参考にし、簡略化したものです。</br>
-  また、前者の文献ではバージョンの関係上、AWS LoadBalancer ControllerとExternalDNSでPod Identityを設定せず、アプリケーションでの設定のみとなっておりましたが、本ディレクトリ手順での最新バージョンでは設定可能となっています。
+  また、前者の文献ではバージョンの関係上、AWS LoadBalancer ControllerとExternalDNSでPod Identityを設定せず、アプリケーションでの設定のみとなっておりましたが、本手順での最新バージョンでは設定可能となっています。
 - [EKS Pod Identity を活用して Terraform でプロビジョニングした EKS を Blue/Green アップグレードしてみた](https://dev.classmethod.jp/articles/eks-pod-identity-terraform-blue-green-upgrade/)
 - [Amazon EKS Blueprints for Terraform](https://github.com/aws-ia/terraform-aws-eks-blueprints/tree/main/patterns/blue-green-upgrade)
 
@@ -104,10 +104,10 @@ resource "aws_eks_pod_identity_association" "external-dns-identity" {
 ### 1. 共通リソースデプロイ
 #### 1.1. CodeBuildデプロイ
 ```sh
-cd system/common/codebuild
-terraform init
-terraform plan
-terraform apply
+$ cd system/common/codebuild
+$ terraform init
+$ terraform plan
+$ terraform apply
 ```
 
 > [!IMPORTANT]
@@ -129,10 +129,10 @@ buildspec.ymlは`system/assets/sample-app/container/buildspec.yml`を参照く�
 
 #### 1.3. Network系AWSリソースデプロイ
 ```sh
-cd system/common/network
-terraform init
-terraform plan
-terraform apply
+$ cd system/common/network
+$ terraform init
+$ terraform plan
+$ terraform apply
 ```
 ここで以下リソースがデプロイされます。
 - VPC
@@ -176,7 +176,7 @@ $ helm install -n argocd argocd argo/argo-cd --create-namespace
 ```
 #### 3.2. Applicationインストール
 ```sh
-apply -f system/assets/argocd/app-of-apps-blue.yaml
+$ kubectl apply -f system/assets/argocd/app-of-apps-blue.yaml
 ```
 
 ここまでくると、以下のようにArgo CDでApp of AppsパターンでApplicationが管理されていることが確認できるようになります。
@@ -220,7 +220,7 @@ $ helm install -n argocd argocd argo/argo-cd --create-namespace
 ```
 #### 5.2. Applicationインストール
 ```sh
-apply -f system/assets/argocd/app-of-apps-green.yaml
+$ kubectl apply -f system/assets/argocd/app-of-apps-green.yaml
 ```
 
 Blueと同じドメインでIngressをデプロイしてます。</br>
