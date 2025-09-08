@@ -1,68 +1,135 @@
 # EKS Blue-Green Upgrade with Terraform
 
-本リポジトリは、**Amazon EKS クラスターの Blue-Green アップグレード戦略**を Terraform を用いて実現するための構成です。</br>
-各バージョンの EKS クラスター（Blue と Green）を並列に管理し、Route53 の加重レコードを活用してトラフィックを段階的に切り替える構成になっています。</br>
-※本ディレクトリの構成は、 以下文献を参考にし、簡略化したものです。</br>
-  また、前者の文献ではバージョンの関係上、AWS LoadBalancer ControllerとExternalDNSでPod Identityを設定せず、アプリケーションでの設定のみとなっておりましたが、本手順での最新バージョンでは設定可能となっています。
+## 📋 リポジトリ概要
+
+本リポジトリは、**Amazon EKS クラスターの Blue-Green アップグレード戦略**を Terraform を用いて実現するための完全なソリューションです。
+
+### 🎯 目的
+- EKS クラスターのバージョンアップを **ダウンタイムゼロ** で実現
+- 本番環境でのリスクを最小化した安全なアップグレード手法の提供
+- Infrastructure as Code による再現可能で自動化された環境構築
+
+### 🏗️ アーキテクチャの特徴
+- **並列運用**: Blue（現行）と Green（新バージョン）の2つのEKSクラスターを同時稼働
+- **段階的切り替え**: Route53 の加重レコードを使用したトラフィックの段階的移行
+- **自動化**: ArgoCD を活用した App of Apps パターンでのアプリケーション管理
+- **セキュリティ**: Pod Identity を使用した IAM ロールとの安全な連携
+
+### 🔄 Blue-Green アップグレードフロー
+```
+1. Blue クラスター (現行版) でサービス稼働
+2. Green クラスター (新バージョン) を並列構築
+3. Route53 で段階的にトラフィックを Blue → Green に移行
+4. Green での安定性確認後、Blue クラスターを削除
+```
+
+### 📚 参考文献
+本リポジトリは以下の文献を参考にし、最新のベストプラクティスを適用して改良したものです：
 - [EKS Pod Identity を活用して Terraform でプロビジョニングした EKS を Blue/Green アップグレードしてみた](https://dev.classmethod.jp/articles/eks-pod-identity-terraform-blue-green-upgrade/)
 - [Amazon EKS Blueprints for Terraform](https://github.com/aws-ia/terraform-aws-eks-blueprints/tree/main/patterns/blue-green-upgrade)
 
-> [!NOTE]
-> さらに今回はArgo CDのApp of Appsパターンを導入し、Load Balancerや、ドメイン、アプリの払い出しを簡略化しています。</br>
-> App of Appsパターンでは、Sync Wave機能を使用し、各Applicationの起動と削除順序を制御しています。
-> ```yaml
-> apiVersion: argoproj.io/v1alpha1
-> kind: Application
-> metadata:
->   name: aws-load-balancer-controller
->   namespace: argocd
->   annotations:
->     argocd.argoproj.io/sync-wave: "-1"
-> ```
-> なお、今回は全てCLIでの操作を前提としていますが、Argo CDのGUI画面を使用して操作も可能です。
+## 🚀 主要な技術改善点
 
-## ディレクトリ構成
+### ArgoCD App of Apps パターンの採用
+- **統合管理**: Load Balancer、ドメイン、アプリケーションの一元管理を実現
+- **順序制御**: Sync Wave 機能による各 Application の起動・削除順序の制御
+- **可視化**: ArgoCD GUI による直感的な操作とステータス確認
+
+```yaml
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"  # 他のアプリより先に起動
+```
+
+### Pod Identity の完全対応
+最新バージョンの EKS では Pod Identity が正式サポートされ、以下のコンポーネントで活用：
+- AWS Load Balancer Controller
+- ExternalDNS  
+- アプリケーション用 ServiceAccount
+
+## 📁 ディレクトリ構成
+
 EKSを作成するModuleは[こちらを参照](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/tree/main/modules/cluster)
+
 ```
 .
-├── modules/cluster # EKS作成モジュール
-└──system
-│   ├── assets        # サンプルアプリや各種yamlファイル
-│   ├── blue-cluster  # EKS 1.33 クラスター (Green)
-│   ├── green-cluster # EKS 1.32 クラスター (Blue)
-│   ├── common        # 共通の VPC, Route53 Hosted Zone, CodeBuild
+├── modules/cluster     # EKS クラスター作成用の再利用可能なモジュール
+│   ├── main.tf        # EKS クラスターとノードグループの定義
+│   ├── variables.tf   # 入力変数の定義
+│   └── outputs.tf     # 出力値の定義
+└── system/
+    ├── assets/        # ArgoCD アプリケーション定義とサンプルアプリ
+    │   ├── argocd/    # App of Apps パターンの設定ファイル
+    │   ├── external-dns/ # ExternalDNS の設定
+    │   └── sample-app/   # サンプルアプリケーション
+    ├── blue-cluster/  # EKS 1.32 クラスター（Blue 環境）
+    ├── green-cluster/ # EKS 1.33 クラスター（Green 環境）  
+    └── common/        # 共通リソース
+        ├── network/   # VPC、サブネット、Route53
+        ├── codebuild/ # CI/CD パイプライン
+        └── s3/        # Terraform state 用 S3
 ```
 
-## 使用技術
-- Terraform v1.12.2
-- AWS EKS (Blue: 1.32 / Green: 1.33)
-  - Pod Identity
-- [AWS Load Balancer Controller](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.13/)
-- [ExternalDNS](https://github.com/kubernetes-sigs/external-dns)
-- Route53 Weighted Routing
+### 各ディレクトリの役割
 
-## Pod Identityについて
-EKSのServiceAccountに対してIAMロールを紐づける仕組みとして、
-[AWS公式のModule terraform-aws-eks-pod-identity](https://registry.terraform.io/modules/terraform-aws-modules/eks-pod-identity/aws/latest)の利用も可能です。しかしこのモジュールでは、[aws_eks_pod_identity_associationリソース](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/eks_pod_identity_association)の`role_arn` に指定されるロールが、新規作成されることを前提としています。</br>
-以下は、該当Module内のコード（[該当箇所のリンク](https://github.com/terraform-aws-modules/terraform-aws-eks-pod-identity/blob/6d4aa31990e4179640c869505169ebc78f200e10/main.tf#L183-L196)）です。
+| ディレクトリ | 説明 | 含まれるリソース |
+|-------------|------|-----------------|
+| `modules/cluster` | 再利用可能な EKS モジュール | EKS クラスター、ノードグループ、Pod Identity |
+| `system/common/network` | ネットワーク基盤 | VPC、サブネット、Route53、IAM ロール |
+| `system/common/codebuild` | CI/CD 基盤 | CodeBuild プロジェクト、GitHub 連携 |
+| `system/blue-cluster` | Blue 環境 | EKS 1.32 クラスター |
+| `system/green-cluster` | Green 環境 | EKS 1.33 クラスター |
+| `system/assets` | アプリケーション定義 | ArgoCD アプリ、サンプルアプリ |
 
+## 🛠️ 使用技術
+
+### インフラストラクチャ
+| 技術 | バージョン | 用途 |
+|------|-----------|------|
+| **Terraform** | v1.12.2 | インフラストラクチャのコード化 |
+| **AWS EKS** | Blue: 1.32 / Green: 1.33 | Kubernetes クラスター基盤 |
+| **Pod Identity** | - | IAM ロールとの安全な連携 |
+
+### Kubernetes アドオン
+| コンポーネント | 説明 |
+|---------------|------|
+| [**AWS Load Balancer Controller**](https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.13/) | AWS ALB/NLB の自動管理 |
+| [**ExternalDNS**](https://github.com/kubernetes-sigs/external-dns) | Route53 レコードの自動管理 |
+| **ArgoCD** | GitOps による継続的デプロイメント |
+
+### ネットワーク構成
+| 技術 | 用途 |
+|------|------|
+| **Route53 Weighted Routing** | Blue-Green 間のトラフィック制御 |
+| **NAT Gateway** | コスト効率的なアウトバウンド通信 |
+| **Application Load Balancer** | HTTP/HTTPS トラフィック分散 |
+
+## 🔐 Pod Identity について
+
+### 技術的背景
+EKS の ServiceAccount に対して IAM ロールを紐づける仕組みとして、従来の IRSA（IAM Roles for Service Accounts）に加えて、より新しい **Pod Identity** 機能を採用しています。
+
+### 設計上の課題と解決策
+AWS 公式の [terraform-aws-eks-pod-identity モジュール](https://registry.terraform.io/modules/terraform-aws-modules/eks-pod-identity/aws/latest) は新規 IAM ロール作成を前提としていますが、本構成では Blue-Green 両クラスターで **同一の IAM ロール** を共有する必要があります。
+
+#### 公式モジュールの制約
 ```hcl
+# 公式モジュールでは role_arn が新規作成されるロールに固定
 resource "aws_eks_pod_identity_association" "this" {
-  for_each = { for k, v in var.associations : k => v if var.create }
-
-
   cluster_name    = try(each.value.cluster_name, var.association_defaults.cluster_name)
   namespace       = try(each.value.namespace, var.association_defaults.namespace)
   service_account = try(each.value.service_account, var.association_defaults.service_account)
-  role_arn        = aws_iam_role.this[0].arn
-
-
-  tags = merge(var.tags, try(each.value.tags, var.association_defaults.tags, {}))
+  role_arn        = aws_iam_role.this[0].arn  # ← 新規作成されるロール
 }
 ```
-今回はEKSクラスターをBlue/Greenの2系統で構築し、それぞれで**同一のIAMロール**を使用する必要があります。そのため、新規ロール作成が前提となっている公式モジュールでは要件を満たせません。
-そこで、`aws_eks_pod_identity_association`リソースをモジュール経由ではなく直接コード内に記述し、あらかじめ作成済みのIAMロールARNを明示的に指定する形でPod Identityを設定しています。
+
+#### 本構成での解決策
 ```hcl
+# 既存の IAM ロール ARN を明示的に指定
 resource "aws_eks_pod_identity_association" "external-dns-identity" {
   cluster_name    = module.eks.cluster_name
   namespace       = local.external_dns_namespace
@@ -71,180 +138,464 @@ resource "aws_eks_pod_identity_association" "external-dns-identity" {
 }
 ```
 
-## 前提条件
-- Route53へドメインおよびホストゾーンが登録されていること
-- [argocd CLI](https://argo-cd.readthedocs.io/en/stable/cli_installation/)をインストールしていること
+この方法により、Blue-Green 両環境で一貫したセキュリティポリシーを維持しながら、効率的なリソース管理を実現しています。
 
-## 手順
+## ✅ 前提条件
+
+### 必要な環境
+- **AWS CLI**: 適切な権限を持つ AWS アカウントでの認証済み
+- **Terraform**: v1.12.2 以上
+- **kubectl**: Kubernetes クラスター操作用
+- **ArgoCD CLI**: [公式インストールガイド](https://argo-cd.readthedocs.io/en/stable/cli_installation/) に従ってインストール
+
+### AWS リソースの事前準備
+- **Route53 ホストゾーン**: 使用するドメインのホストゾーンが事前に登録済みであること
+- **IAM 権限**: EKS、VPC、Route53、S3、CodeBuild などのリソース作成権限
+
+### ネットワーク設計について
+本構成では、コスト最適化の観点から以下の設計を採用しています：
+
+> **💡 ネットワーク戦略**
+> 
+> AWS 内外を問わず、基本的に **NAT Gateway 経由** での通信を採用しています。
+> 一般的には DynamoDB などの AWS サービスへの通信には VPC エンドポイント（Gateway Endpoint）を使用するケースもありますが、以下の理由により NAT Gateway を選択：
+> 
+> - **コスト効率**: VPC エンドポイントの月額費用 vs NAT Gateway のデータ転送費用
+> - **運用簡素化**: エンドポイント管理の複雑さを回避
+> - **セキュリティ維持**: 適切なセキュリティグループとネットワーク ACL により十分なセキュリティを確保
+> 
+> 参考：[VPC エンドポイントを消すだけでセキュリティそのままにコストが節約できた](https://zenn.dev/simpleform_blog/articles/f048edb9efd2b2)
+> 
+> 必要に応じて VPC エンドポイントを追加する構成も柔軟に対応可能です。
+
+## 🚀 セットアップ手順
+
 ### 事前準備
-#### 以下のGitHubリポジトリURLを任意のものに変える
 
-  現在GitHubリポジトリURLは本リポジトリを指していますので、必ずご自身でフォークしたリポジトリ名に置き換えてください。
-  - [system/assets/argocd/app-of-apps-blue.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/app-of-apps-blue.yaml#L9)
-  - [system/assets/argocd/app-of-apps-green.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/app-of-apps-green.yaml#L9)
-  - [system/assets/argocd/base/externaldns-applications.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/base/externaldns-applications.yaml#L13)
-  - [system/assets/argocd/base/fastapi-applications.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/base/fastapi-applications.yaml#L13)
-  - [system/common/codebuild/main.tf](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/common/codebuild/main.tf#L125)
+#### 1. GitHub リポジトリ URL の更新
+以下のファイル内の GitHub リポジトリ URL を、**ご自身でフォークしたリポジトリ** に変更してください：
 
-#### backendのS3を作成する
+| ファイルパス | 変更箇所 |
+|-------------|----------|
+| `system/assets/argocd/app-of-apps-blue.yaml` | [L9](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/app-of-apps-blue.yaml#L9) |
+| `system/assets/argocd/app-of-apps-green.yaml` | [L9](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/app-of-apps-green.yaml#L9) |
+| `system/assets/argocd/base/externaldns-applications.yaml` | [L13](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/base/externaldns-applications.yaml#L13) |
+| `system/assets/argocd/base/fastapi-applications.yaml` | [L13](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/base/fastapi-applications.yaml#L13) |
+| `system/common/codebuild/main.tf` | [L125](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/common/codebuild/main.tf#L125) |
 
-  EKSをデプロイするmoduleではterraform_remote_stateを使用して、VPC IDなどを取得する構成としているため、以降の手順を実施する前に、以下参考資料のドキュメントを参考にbackend用S3をデプロイして、stateを管理できるようにしておく必要があります。</br>
-  なお、S3のBucket名は任意のものに適宜置き換えてください。</br>
-  参考：[S3でtfstateファイルを管理する](https://qiita.com/pir0ot/items/aab7ff19b78c818779a7)</br>
-  今回は`system/common/s3`にbackend用のS3をデプロイするコードを置いていますので、以下手順でも準備を完了することができます。</br>
+#### 2. Terraform Backend 用 S3 セットアップ
 
-  1. backend.tfの拡張子を.bakなどに変更
-  1. `terraform init` -> `terraform apply`実行
-  1. backend.tfの拡張子を元に戻す
-  1. `terraform init`実行
+本構成では `terraform_remote_state` を使用して共通リソース（VPC ID など）を参照するため、事前に Backend 用 S3 バケットの準備が必要です。
 
-  最後のterraform initにより、ローカルのtfstateが検知され、自動でS3にコピーされます。</br>
-  対話式なので、S3にコピーするか尋ねられたら、yesを入力して処理を完了してください。
+```bash
+# 1. S3 ディレクトリに移動
+cd system/common/s3
 
-### 1. 共通リソースデプロイ
-#### 1.1. CodeBuildデプロイ
-```sh
-$ cd system/common/codebuild
-$ terraform init
-$ terraform plan
-$ terraform apply
+# 2. backend.tf を一時的に無効化
+mv backend.tf backend.tf.bak
+
+# 3. 初期デプロイ（ローカル state）
+terraform init
+terraform apply
+
+# 4. backend.tf を復元
+mv backend.tf.bak backend.tf
+
+# 5. state を S3 に移行
+terraform init
+# → "Do you want to copy existing state to the new backend?" で "yes" を入力
 ```
 
-> [!IMPORTANT]
-> このプロジェクトでは、AWS CodeConnections（aws_codeconnections_connection.github）を使ってGitHubからのWebhookを受け取り、CIのトリガーにしています。
-> ただし、Webhook は CodeBuild と同時にデプロイできません。まずは AWS CodeConnections を承認し、GitHub リポジトリに GitHub App をインストールしてください。
+> **📝 参考**: [S3でtfstateファイルを管理する](https://qiita.com/pir0ot/items/aab7ff19b78c818779a7)
 >
+> S3 バケット名は任意のものに適宜変更してください。
+
+### デプロイメント手順
+
+#### 1. 共通インフラストラクチャのデプロイ
+
+##### 1.1. CodeBuild CI/CD パイプラインの構築
+```bash
+cd system/common/codebuild
+terraform init
+terraform plan
+terraform apply
+```
+
+> **⚠️ 重要: AWS CodeConnections の設定**
+> 
+> このプロジェクトでは、AWS CodeConnections を使用して GitHub からの Webhook を受け取り、CI をトリガーしています。
+> 
+> **初回デプロイ後の追加設定:**
+> 1. AWS コンソールで CodeConnections の承認を実行
+> 2. GitHub リポジトリに GitHub App をインストール
+> 3. `main.tf` 内の Webhook リソースのコメントアウトを解除
+> 4. `terraform apply` を再実行
+> 
 > 参考：[AWS CodeBuild入門：セキュアなCIをTerraformで構築したよ](https://zenn.dev/junya0530/articles/8f3494d0ee8beb)
->
-> 初期状態では Webhook のリソースはコメントアウトしています。AWS CodeConnections の承認が完了したら、コメントアウトを解除して terraform apply を再実行してください。
 
-#### 1.2. コンテナのBuild&Push
-`system/assets/sample-app/container` ディレクトリのファイルを変更することでCIを走らせることが可能です。</br>
-CIは以下の処理を行っています。
-- ECRへのログイン
-- コンテナのBiuld
-- ECRへコンテナのPush
-
-buildspec.ymlは`system/assets/sample-app/container/buildspec.yml`を参照ください。
-
-#### 1.3. Network系AWSリソースデプロイ
-```sh
-$ cd system/common/network
-$ terraform init
-$ terraform plan
-$ terraform apply
-```
-ここで以下リソースがデプロイされます。
-- VPC
-- Subnet
-- 事前に登録したドメインに紐づくサブドメイン
-- Pod Identityに紐づけるIAMロール
-
-> [!NOTE]
-> 本構成では、コスト最適化の観点から、AWS内外を問わず通信は基本的にNAT Gateway経由としています。</br>
-> 通常、EKSからDynamoDBなどのAWSサービスへの通信にはVPCエンドポイント（Gateway Endpoint）を用いるケースもありますが、以下の事例にもある通り、NAT Gatewayを介した通信でもセキュリティを維持しつつコストを抑えることが可能です。
->
-> 参考：[【AWSコスト最適化】VPC エンドポイントを消すだけでセキュリティそのままにコストが節約できた](https://zenn.dev/simpleform_blog/articles/f048edb9efd2b2)
->
-> 現在はコメントしてますが、必要に応じてVPC Endpointを追加する構成も柔軟に対応可能です。
-
-#### 1.4. Amazon DynamoDBへデータ投入
-```sh
-# キーは任意の値とする
-$ aws dynamodb put-item --table-name test-dynamodb --item '{"UserId": {"S": "3"}}'
+##### 1.2. コンテナイメージのビルド & プッシュ
+```bash
+# sample-app のコンテナファイルを変更して CI をトリガー
+# または手動でビルド
+cd system/assets/sample-app/container
+# ファイルを変更してコミット・プッシュ
 ```
 
-### 2. Blue EKSクラスタデプロイ
-```sh
-$ cd system/blue-cluster
-$ terraform init
-$ terraform plan
-$ terraform apply
-```
-このステップでは、EKS クラスターのデプロイと同時に Pod Identity Agent Add-on を有効化し、Namespace、ServiceAccount、IAM ロールを紐付けます。
-これにより、Pod Identity を通じて IAM ロールを利用できるようにする設定が完了となります。対象となるコンポーネントは以下の通りです。
-- AWS Load Balancer Controller
-- ExternalDNS
-- アプリケーション用 ServiceAccount
+**CI パイプラインの処理内容:**
+- ECR への認証
+- Docker イメージのビルド
+- ECR へのイメージプッシュ
 
-### ３. Blue EKSクラスタArgo CDインストール
-#### 3.1. インストール
-```sh
-# https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
-$ helm repo add argo https://argoproj.github.io/argo-helm
-$ helm install -n argocd argocd argo/argo-cd --create-namespace
-```
-#### 3.2. Applicationインストール
-```sh
-$ kubectl apply -f system/assets/argocd/app-of-apps-blue.yaml
+ビルド設定は `system/assets/sample-app/container/buildspec.yml` を参照してください。
+
+##### 1.3. ネットワークリソースのデプロイ
+```bash
+cd system/common/network
+terraform init
+terraform plan
+terraform apply
 ```
 
-ここまでくると、以下のようにArgo CDでApp of AppsパターンでApplicationが管理されていることが確認できるようになります。
-```sh
-$ argocd app get app-of-apps
-Name:               argocd/app-of-apps
-Project:            default
-Server:             https://kubernetes.default.svc
-Namespace:          argocd
-URL:                https://argocd.example.com/applications/app-of-apps
-Source:
-- Repo:             https://github.com/jnytnai0613/blue-green-upgrade-blueprints
-  Target:           HEAD
-  Path:             system/assets/argocd/overlays/green
-SyncWindow:         Sync Allowed
-Sync Policy:        Automated (Prune)
-Sync Status:        Synced to HEAD (fe76e47)
-Health Status:      Healthy
+**デプロイされるリソース:**
+- VPC とサブネット
+- Route53 サブドメイン（事前登録ドメインに紐づく）
+- Pod Identity 用 IAM ロール
+- セキュリティグループ
 
-GROUP        KIND         NAMESPACE  NAME                          STATUS  HEALTH  HOOK  MESSAGE
-argoproj.io  Application  argocd     aws-load-balancer-controller  Synced                application.argoproj.io/aws-load-balancer-controller created
-argoproj.io  Application  argocd     externaldns                   Synced                application.argoproj.io/externaldns created
-argoproj.io  Application  argocd     fastapi                       Synced                application.argoproj.io/fastapi created
+##### 1.4. サンプルデータの準備
+```bash
+# DynamoDB テーブルにテストデータを投入
+aws dynamodb put-item \
+  --table-name test-dynamodb \
+  --item '{"UserId": {"S": "3"}}'
 ```
 
-### 4. Green EKSクラスタデプロイ
-```sh
-$ cd system/blue-cluster
-$ terraform init
-$ terraform plan
-$ terraform apply
-```
-ここで、Blue面と同じく、EKS クラスターのデプロイと同時に Pod Identity Agent Add-on を有効化し、Namespace、ServiceAccount、IAM ロールを紐付けます。
+#### 2. Blue EKS クラスター（現行環境）のデプロイ
 
-### 5. Green EKSクラスタへのArgo CDインストール
-#### 5.1. インストール
-```sh
-# https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
-$ helm repo add argo https://argoproj.github.io/argo-helm
-$ helm install -n argocd argocd argo/argo-cd --create-namespace
-```
-#### 5.2. Applicationインストール
-```sh
-$ kubectl apply -f system/assets/argocd/app-of-apps-green.yaml
+```bash
+cd system/blue-cluster
+terraform init
+terraform plan
+terraform apply
 ```
 
-Blueと同じドメインでIngressをデプロイしてます。</br>
-この時、ExternalDNSによってRoute53のサブドメインへ、Blue面とは異なりレコードIDが"test-green"となるAレコードが登録されます。</br>
-今回はルーティングポリシーの重みづけをBlueを70、Greenを30にしています。</br>
-次のステップで重みづけを変更し、面の切り替えを行います。
+**このステップで実行される処理:**
+- EKS 1.32 クラスターの作成
+- Pod Identity Agent Add-on の有効化
+- 以下コンポーネント用の Namespace と ServiceAccount の作成:
+  - AWS Load Balancer Controller
+  - ExternalDNS
+  - サンプルアプリケーション
 
-### 4. 切り替え
-1. しばらく両クラスタを稼働させ、Green面の新クラスタに問題がないことを確認します。
-1. Blue面のsystem/assets/sample-app/overlays/blue/ingress-patch.yaml内の `.metadata.annotation.external-dns.alpha.kubernetes.io/aws-weigh` を 0 に変更し、Ingressを削除して再作成します。（削除によりApplicationが再作成します）
-1. Route53のレコードIDが"test-blue"になっているAレコード、AAAAレコード、TXTレコードを削除し、ExternalDNSによって再度登録されるのを待ちます。
-1.  同じくGreen面のsystem/assets/sample-app/overlays/green/ingress-patch.yaml内の `.metadata.annotation.external-dns.alpha.kubernetes.io/aws-weigh` を 100 に変更し、再作成します。
-1. Route53のレコードIDが"test-green"になっているAレコード、AAAAレコード、TXTレコードを削除し、ExternalDNSによって再度登録されるのを待ちます。
-1. これでGreen面の新クラスタに全部のトラフィックが流れます。問題ないことを確認後、以下コマンドでBlue面を削除します。
-```sh
-# Argo CDのパスワード確認
-$ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+##### 2.1. ArgoCD のインストール
+```bash
+# Helm リポジトリの追加
+helm repo add argo https://argoproj.github.io/argo-helm
 
-# App of Appsパターンの親Application削除
-$ kubectl port-forward service/argocd-server -n argocd 8080:443
-$ argocd login localhost:8080 --name admin --password XXXXXX
-$ argocd app delete app-of-apps
-
-# クラスタ削除
-$ cd system/blue-cluster
-$ terraform destroy
+# ArgoCD のインストール
+helm install -n argocd argocd argo/argo-cd --create-namespace
 ```
+
+##### 2.2. App of Apps パターンの適用
+```bash
+# Blue 環境用のアプリケーション群をデプロイ
+kubectl apply -f system/assets/argocd/app-of-apps-blue.yaml
+```
+
+**デプロイ確認:**
+```bash
+# ArgoCD アプリケーションの状態確認
+argocd app get app-of-apps
+
+# 期待される出力例:
+# Name:               argocd/app-of-apps
+# Project:            default
+# Server:             https://kubernetes.default.svc
+# Namespace:          argocd
+# Sync Status:        Synced to HEAD
+# Health Status:      Healthy
+```
+
+#### 3. Green EKS クラスター（新バージョン環境）のデプロイ
+
+```bash
+cd system/green-cluster
+terraform init
+terraform plan
+terraform apply
+```
+
+**Blue 環境との違い:**
+- EKS バージョン: 1.33（Blue は 1.32）
+- 同一のドメインでIngressをデプロイ
+- Route53 レコード ID: "test-green"（Blue は "test-blue"）
+- 初期トラフィック重み: Green 30% / Blue 70%
+
+##### 3.1. Green 環境への ArgoCD インストール
+```bash
+# Green クラスターに kubectl コンテキストを切り替え
+kubectl config use-context <green-cluster-context>
+
+# ArgoCD のインストール
+helm repo add argo https://argoproj.github.io/argo-helm
+helm install -n argocd argocd argo/argo-cd --create-namespace
+```
+
+##### 3.2. Green 環境用アプリケーションのデプロイ
+```bash
+kubectl apply -f system/assets/argocd/app-of-apps-green.yaml
+```
+
+この時点で、ExternalDNS により Route53 に以下のレコードが自動作成されます：
+- Blue 環境: レコード ID "test-blue" （重み: 70）
+- Green 環境: レコード ID "test-green" （重み: 30）
+
+#### 4. Blue-Green 切り替えプロセス
+
+Blue-Green デプロイメントの最も重要な段階です。段階的にトラフィックを移行し、安全にアップグレードを完了します。
+
+##### 4.1. 両環境の稼働確認
+```bash
+# 両クラスターでアプリケーションが正常稼働していることを確認
+# 期間: 数時間〜数日（要件に応じて調整）
+
+# Green 環境の監視項目:
+# - アプリケーションの応答性
+# - ログの出力状況
+# - メトリクスの正常性
+# - リソース使用量
+```
+
+##### 4.2. Blue 環境のトラフィック重みを 0 に変更
+```bash
+# Blue 環境の Ingress 設定を編集
+# system/assets/sample-app/overlays/blue/ingress-patch.yaml 内の
+# .metadata.annotation.external-dns.alpha.kubernetes.io/aws-weight を 0 に変更
+
+# Ingress の再作成（ArgoCD が自動的に再デプロイ）
+kubectl delete ingress <ingress-name> -n <namespace>
+# ArgoCD が自動的に再作成
+```
+
+##### 4.3. Route53 レコードの更新
+```bash
+# Blue 環境のレコードを削除（ExternalDNS が重み 0 で再作成）
+aws route53 change-resource-record-sets \
+  --hosted-zone-id <your-hosted-zone-id> \
+  --change-batch '{
+    "Changes": [
+      {
+        "Action": "DELETE",
+        "ResourceRecordSet": {
+          "Name": "your-domain.com",
+          "Type": "A",
+          "SetIdentifier": "test-blue",
+          ...
+        }
+      }
+    ]
+  }'
+```
+
+##### 4.4. Green 環境のトラフィック重みを 100 に変更
+```bash
+# Green 環境の Ingress 設定を編集
+# system/assets/sample-app/overlays/green/ingress-patch.yaml 内の
+# .metadata.annotation.external-dns.alpha.kubernetes.io/aws-weight を 100 に変更
+
+# 同様に Green 環境のレコードを削除・再作成
+```
+
+##### 4.5. Blue 環境の削除
+```bash
+# 全トラフィックが Green に移行し、安定稼働を確認後
+
+# ArgoCD から Blue 環境のアプリケーションを削除
+kubectl port-forward service/argocd-server -n argocd 8080:443 &
+
+# ArgoCD admin パスワードの取得
+ARGO_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d)
+
+# ArgoCD にログイン
+argocd login localhost:8080 --username admin --password $ARGO_PASSWORD
+
+# App of Apps の削除
+argocd app delete app-of-apps
+
+# Blue クラスターの削除
+cd system/blue-cluster
+terraform destroy
+```
+
+### 🎉 アップグレード完了
+
+これで EKS クラスターのバージョンアップグレードが完了しました！
+
+**確認事項:**
+- ✅ 全トラフィックが Green 環境（EKS 1.33）に流れている
+- ✅ アプリケーションが正常稼働している  
+- ✅ Blue 環境（EKS 1.32）が正常に削除された
+- ✅ Route53 レコードが Green 環境のみになっている
+
+## 🚨 トラブルシューティング
+
+### よくある問題と解決方法
+
+#### 1. ArgoCD アプリケーションが Sync されない
+```bash
+# 症状: ArgoCD アプリケーションが OutOfSync 状態
+# 原因: GitHub リポジトリ URL の設定ミス
+
+# 解決方法:
+# 1. GitHubリポジトリURLを正しく設定
+# 2. ArgoCD アプリケーションを手動で Sync
+argocd app sync app-of-apps
+```
+
+#### 2. Pod Identity の権限エラー
+```bash
+# 症状: AWS Load Balancer Controller や ExternalDNS で権限エラー
+# 原因: Pod Identity の設定ミスまたは IAM ロールの権限不足
+
+# 確認方法:
+kubectl describe pod <pod-name> -n <namespace>
+
+# 解決方法:
+# 1. Pod Identity Association を確認
+aws eks describe-pod-identity-association \
+  --cluster-name <cluster-name> \
+  --association-id <association-id>
+
+# 2. IAM ロールの権限を確認
+aws iam get-role-policy --role-name <role-name> --policy-name <policy-name>
+```
+
+#### 3. Route53 レコードが作成されない
+```bash
+# 症状: ExternalDNS がRoute53にレコードを作成しない
+# 原因: ExternalDNS の設定またはドメイン設定の問題
+
+# 確認方法:
+kubectl logs -l app.kubernetes.io/name=external-dns -n external-dns
+
+# 解決方法:
+# 1. ホストゾーンの設定を確認
+aws route53 list-hosted-zones
+
+# 2. ExternalDNS の設定を確認
+kubectl get configmap external-dns -n external-dns -o yaml
+```
+
+#### 4. Terraform State のロック
+```bash
+# 症状: "state lock" エラーで terraform apply が実行できない
+# 原因: 前回の実行が異常終了してロックが残っている
+
+# 解決方法:
+terraform force-unlock <lock-id>
+```
+
+## 🔧 カスタマイズとベストプラクティス
+
+### 環境に応じたカスタマイズ
+
+#### 1. クラスターサイズの調整
+```hcl
+# system/blue-cluster/main.tf または system/green-cluster/main.tf
+module "eks" {
+  source = "../../modules/cluster"
+  
+  cluster_name = "blue-cluster"
+  cluster_version = "1.32"
+  
+  # 本番環境では以下を調整
+  min_size = 3          # 最小ノード数
+  max_size = 10         # 最大ノード数  
+  desired_size = 5      # 希望ノード数
+  instance_types = ["m5.large", "m5.xlarge"]  # インスタンスタイプ
+}
+```
+
+#### 2. モニタリングの追加
+```yaml
+# system/assets/argocd/base/ に追加
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prometheus
+  namespace: argocd
+spec:
+  source:
+    repoURL: https://prometheus-community.github.io/helm-charts
+    chart: kube-prometheus-stack
+    targetRevision: "45.7.1"
+```
+
+#### 3. セキュリティ強化
+```hcl
+# system/common/network/main.tf
+# VPC エンドポイントの追加例
+resource "aws_vpc_endpoint" "s3" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${data.aws_region.current.name}.s3"
+  
+  route_table_ids = [aws_route_table.private.id]
+}
+```
+
+### 運用のベストプラクティス
+
+#### 1. デプロイメント前のチェックリスト
+- [ ] 全ての GitHub リポジトリ URL が正しく設定されている
+- [ ] Backend S3 バケットが作成済み
+- [ ] Route53 ドメインが設定済み
+- [ ] AWS 認証情報が正しく設定されている
+- [ ] 必要な CLI ツールがインストール済み
+
+#### 2. 切り替え時の監視項目
+- [ ] アプリケーションのレスポンス時間
+- [ ] エラー率の変化
+- [ ] リソース使用量（CPU、メモリ）
+- [ ] ネットワーク通信の状況
+- [ ] ログの出力状況
+
+#### 3. ロールバック戦略
+```bash
+# 緊急時のロールバック手順
+# 1. トラフィック重みを即座に元に戻す
+# 2. 問題のある Green 環境を隔離
+# 3. Blue 環境の復旧（必要に応じて）
+```
+
+## 📚 参考資料
+
+### 公式ドキュメント
+- [Amazon EKS User Guide](https://docs.aws.amazon.com/eks/latest/userguide/)
+- [Terraform AWS Provider](https://registry.terraform.io/providers/hashicorp/aws/latest/docs)
+- [ArgoCD Documentation](https://argo-cd.readthedocs.io/en/stable/)
+
+### 関連記事
+- [EKS Pod Identity を活用して Terraform でプロビジョニングした EKS を Blue/Green アップグレードしてみた](https://dev.classmethod.jp/articles/eks-pod-identity-terraform-blue-green-upgrade/)
+- [AWS CodeBuild入門：セキュアなCIをTerraformで構築したよ](https://zenn.dev/junya0530/articles/8f3494d0ee8beb)
+- [VPC エンドポイントを消すだけでセキュリティそのままにコストが節約できた](https://zenn.dev/simpleform_blog/articles/f048edb9efd2b2)
+
+## 🤝 コントリビューション
+
+本リポジトリへの改善提案やバグ報告は Issue または Pull Request でお気軽にお寄せください。
+
+### 開発環境のセットアップ
+```bash
+# リポジトリのクローン
+git clone https://github.com/jnytnai0613/blue-green-upgrade-blueprints.git
+cd blue-green-upgrade-blueprints
+
+# pre-commit の設定
+pip install pre-commit
+pre-commit install
+```
+
+## 📄 ライセンス
+
+このプロジェクトは MIT ライセンスの下で公開されています。詳細は [LICENSE](LICENSE) ファイルを参照してください。
