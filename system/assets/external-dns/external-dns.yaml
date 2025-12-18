@@ -58,7 +58,7 @@ spec:
         fsGroup: 65534
       containers:
         - name: external-dns
-          image: registry.k8s.io/external-dns/external-dns:0.18.0
+          image: registry.k8s.io/external-dns/external-dns:v0.18.0
           # must specify env AWS_REGION in AWS china regions
           env:
             - name: AWS_REGION
