@@ -15,7 +15,9 @@
       "Action": [
         "route53:ListHostedZones",
         "route53:ListResourceRecordSets",
-        "route53:ListTagsForResources"
+        "route53:ListTagsForResources",
+        "route53:GetChange",
+        "route53:ListHostedZonesByName"
       ],
       "Resource": [
         "*"
