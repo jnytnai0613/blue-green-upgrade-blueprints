@@ -13,12 +13,12 @@ metadata:
   labels:
     app.kubernetes.io/name: external-dns
 rules:
-- apiGroups: [""]
-  resources: ["services", "endpoints", "pods", "nodes"]
-  verbs: ["get","watch","list"]
-- apiGroups: ["extensions", "networking.k8s.io"]
-  resources: ["ingresses"]
-  verbs: ["get","watch","list"]
+  - apiGroups: [""]
+    resources: ["services", "endpoints", "pods", "nodes"]
+    verbs: ["get", "watch", "list"]
+  - apiGroups: ["extensions", "networking.k8s.io"]
+    resources: ["ingresses"]
+    verbs: ["get", "watch", "list"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -31,9 +31,9 @@ roleRef:
   kind: ClusterRole
   name: external-dns
 subjects:
-- kind: ServiceAccount
-  name: external-dns
-  namespace: external-dns
+  - kind: ServiceAccount
+    name: external-dns
+    namespace: external-dns
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -57,18 +57,18 @@ spec:
       securityContext:
         fsGroup: 65534
       containers:
-      - name: external-dns
-        image: bitnami/external-dns:0.17.0
-        # must specify env AWS_REGION in AWS china regions
-        env:
-        - name: AWS_REGION
-          value: ap-northeast-1
-        args:
-        - --source=service
-        - --source=ingress
-        - --domain-filter=test.jnytnai.click # will make ExternalDNS see only the hosted zones matching provided domain, omit to process all available hosted zones
-        - --provider=aws
-        - --policy=upsert-only # would prevent ExternalDNS from deleting any records, omit to enable full synchronization
-        - --aws-zone-type=public # only look at public hosted zones (valid values are public, private or no value for both)
-        - --registry=txt
-        - --txt-owner-id=jnytnai
+        - name: external-dns
+          image: bitnami/external-dns:0.18.0
+          # must specify env AWS_REGION in AWS china regions
+          env:
+            - name: AWS_REGION
+              value: ap-northeast-1
+          args:
+            - --source=service
+            - --source=ingress
+            - --domain-filter=test.jnytnai.click # will make ExternalDNS see only the hosted zones matching provided domain, omit to process all available hosted zones
+            - --provider=aws
+            - --policy=upsert-only # would prevent ExternalDNS from deleting any records, omit to enable full synchronization
+            - --aws-zone-type=public # only look at public hosted zones (valid values are public, private or no value for both)
+            - --registry=txt
+            - --txt-owner-id=jnytnai
