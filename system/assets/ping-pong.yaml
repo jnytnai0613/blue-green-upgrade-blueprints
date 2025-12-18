@@ -1,0 +1,161 @@
+cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: test
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: rollouts-demo
+  namespace: test
+spec:
+  replicas: 2
+  strategy:
+    canary:
+      stableService: podinfo-stable   # our created stable service
+      canaryService: podinfo-preview # our created canary service
+      scaleDownDelayRevisionLimit: 1
+      scaleDownDelaySeconds: 30
+      steps:
+        - setWeight: 30
+        - pause: { duration: 10 }
+        - setWeight: 40
+        - pause: { duration: 10 }
+        - setWeight: 60
+        - pause: { duration: 10 }
+        - setWeight: 80
+        - pause: { duration: 10 }
+      trafficRouting:
+        alb:
+          ingresses:
+            - rollouts-demo-ingress
+          rootService: podinfo-pingpong-stable
+          servicePort: 80
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: podinfo
+  template:
+    metadata:
+      labels:
+        app: podinfo
+      annotations:
+        linkerd.io/inject: enabled
+    spec:
+      containers:
+        - name: podinfod
+          image: quay.io/stefanprodan/podinfo:6.6.1
+          ports:
+            - containerPort: 9898
+              protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: podinfo-stable
+  namespace: test
+  labels:
+    app.kubernetes.io/name: podinfo
+    app.kubernetes.io/instance: podinfo
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: podinfo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: podinfo-preview
+  namespace: test
+  labels:
+    app.kubernetes.io/name: podinfo
+    app.kubernetes.io/instance: podinfo
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: podinfo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: podinfo-ping
+  namespace: test
+  labels:
+    app.kubernetes.io/name: podinfo
+    app.kubernetes.io/instance: podinfo
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: podinfo
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: podinfo-pong
+  namespace: test
+  labels:
+    app.kubernetes.io/name: podinfo
+    app.kubernetes.io/instance: podinfo
+    app.kubernetes.io/version: "1.0.0"
+    app.kubernetes.io/managed-by: Helm
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    app: podinfo
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rollouts-demo-ingress
+  namespace: test
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+spec:
+  rules:
+    - host: test.jnytnai.click
+      http:
+        paths:
+          - path: /*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: podinfo-pingpong-stable
+                port:
+                  number: 80
+          - path: /internal/*
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: podinfo-preview
+                port:
+                  number: 80
+EOF
