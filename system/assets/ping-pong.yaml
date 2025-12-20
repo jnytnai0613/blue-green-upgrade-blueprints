@@ -12,10 +12,10 @@ spec:
   replicas: 2
   strategy:
     canary:
-      canaryService: podinfo-preview # our created canary service
+      canaryService: http-preview # our created canary service
       pingPong:
-        pingService: podinfo-ping
-        pongService: podinfo-pong
+        pingService: http-ping
+        pongService: http-pong
       scaleDownDelayRevisionLimit: 1
       scaleDownDelaySeconds: 30
       steps:
@@ -31,36 +31,36 @@ spec:
         alb:
           ingresses:
             - rollouts-demo-ingress
-          rootService: podinfo-pingpong-stable
+          rootService: http-pingpong-stable
           servicePort: 80
   revisionHistoryLimit: 2
   selector:
     matchLabels:
-      app: podinfo
+      app: http-nginx
   template:
     metadata:
       labels:
-        app: podinfo
+        app: http-nginx
       annotations:
         linkerd.io/inject: enabled
     spec:
       containers:
-        - name: podinfod
+        - name: http-nginx
           image: nginx:latest
           ports:
             - containerPort: 80
               protocol: TCP
+              name: http
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: podinfo-stable
+  name: http-preview
   namespace: test
   labels:
-    app.kubernetes.io/name: podinfo
-    app.kubernetes.io/instance: podinfo
+    app.kubernetes.io/name: http-nginx
+    app.kubernetes.io/instance: http-nginx
     app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
   ports:
@@ -69,18 +69,17 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: podinfo
+    app: http-nginx
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: podinfo-preview
+  name: http-ping
   namespace: test
   labels:
-    app.kubernetes.io/name: podinfo
-    app.kubernetes.io/instance: podinfo
+    app.kubernetes.io/name: http-nginx
+    app.kubernetes.io/instance: http-nginx
     app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
   ports:
@@ -89,18 +88,17 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: podinfo
+    app: http-nginx
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: podinfo-ping
+  name: http-pong
   namespace: test
   labels:
-    app.kubernetes.io/name: podinfo
-    app.kubernetes.io/instance: podinfo
+    app.kubernetes.io/name: http-nginx
+    app.kubernetes.io/instance: http-nginx
     app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: Helm
 spec:
   type: ClusterIP
   ports:
@@ -109,27 +107,7 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: podinfo
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: podinfo-pong
-  namespace: test
-  labels:
-    app.kubernetes.io/name: podinfo
-    app.kubernetes.io/instance: podinfo
-    app.kubernetes.io/version: "1.0.0"
-    app.kubernetes.io/managed-by: Helm
-spec:
-  type: ClusterIP
-  ports:
-    - port: 80
-      targetPort: http
-      protocol: TCP
-      name: http
-  selector:
-    app: podinfo
+    app: http-nginx
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -149,13 +127,13 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: podinfo-pingpong-stable
+                name: http-pingpong-stable
                 port:
                   name: use-annotation
           - path: /internal/*
             pathType: ImplementationSpecific
             backend:
               service:
-                name: podinfo-preview
+                name: http-preview
                 port:
                   number: 80
