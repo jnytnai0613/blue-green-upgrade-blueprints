@@ -12,26 +12,23 @@ spec:
   replicas: 2
   strategy:
     canary:
-      canaryService: http-preview # our created canary service
+      canaryService: nginx-preview # our created canary service
       pingPong:
-        pingService: http-ping
-        pongService: http-pong
+        pingService: nginx-ping
+        pongService: nginx-pong
       scaleDownDelayRevisionLimit: 1
       scaleDownDelaySeconds: 30
       steps:
-        - setWeight: 30
-        - pause: { duration: 10 }
-        - setWeight: 40
-        - pause: { duration: 10 }
-        - setWeight: 60
-        - pause: { duration: 10 }
-        - setWeight: 80
-        - pause: { duration: 10 }
+        - setWeight: 0
+        - setCanaryScale:
+            replicas: 2
+        - pause: {}
+        - setWeight: 100
       trafficRouting:
         alb:
           ingresses:
             - rollouts-demo-ingress
-          rootService: http-pingpong-stable
+          rootService: nginx-pingpong-stable
           servicePort: 80
   revisionHistoryLimit: 2
   selector:
@@ -51,11 +48,18 @@ spec:
             - containerPort: 80
               protocol: TCP
               name: http
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: http-preview
+  name: nginx-preview
   namespace: test
   labels:
     app.kubernetes.io/name: http-nginx
@@ -74,7 +78,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: http-ping
+  name: nginx-ping
   namespace: test
   labels:
     app.kubernetes.io/name: http-nginx
@@ -93,7 +97,7 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: http-pong
+  name: nginx-pong
   namespace: test
   labels:
     app.kubernetes.io/name: http-nginx
@@ -127,13 +131,13 @@ spec:
             pathType: ImplementationSpecific
             backend:
               service:
-                name: http-pingpong-stable
+                name: nginx-pingpong-stable
                 port:
                   name: use-annotation
           - path: /internal/*
             pathType: ImplementationSpecific
             backend:
               service:
-                name: http-preview
+                name: nginx-preview
                 port:
                   number: 80
