@@ -12,10 +12,10 @@ spec:
   replicas: 2
   strategy:
     canary:
-      canaryService: nginx-preview # our created canary service
+      canaryService: sample-preview # our created canary service
       pingPong:
-        pingService: nginx-ping
-        pongService: nginx-pong
+        pingService: sample-ping
+        pongService: sample-pong
       scaleDownDelayRevisionLimit: 1
       scaleDownDelaySeconds: 30
       steps:
@@ -28,30 +28,30 @@ spec:
         alb:
           ingresses:
             - rollouts-demo-ingress
-          rootService: nginx-pingpong-stable
+          rootService: sample-pingpong-stable
           servicePort: 80
   revisionHistoryLimit: 2
   selector:
     matchLabels:
-      app: http-nginx
+      app: sample-app
   template:
     metadata:
       labels:
-        app: http-nginx
+        app: sample-app
       annotations:
         linkerd.io/inject: enabled
     spec:
       containers:
-        - name: http-nginx
-          image: nginx:latest
+        - name: sample-app
+          image: 176032258835.dkr.ecr.ap-northeast-1.amazonaws.com/blue-green-ecr:20251222165149
           ports:
-            - containerPort: 80
+            - containerPort: 8080
               protocol: TCP
               name: http
           resources:
             requests:
               cpu: 100m
-              memory: 128Mi
+              memory: 129Mi
             limits:
               cpu: 200m
               memory: 256Mi
@@ -59,11 +59,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-preview
+  name: sample-preview
   namespace: test
   labels:
-    app.kubernetes.io/name: http-nginx
-    app.kubernetes.io/instance: http-nginx
+    app.kubernetes.io/name: sample-app
+    app.kubernetes.io/instance: sample-app
     app.kubernetes.io/version: "1.0.0"
 spec:
   type: ClusterIP
@@ -73,16 +73,16 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: http-nginx
+    app: sample-app
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-ping
+  name: sample-ping
   namespace: test
   labels:
-    app.kubernetes.io/name: http-nginx
-    app.kubernetes.io/instance: http-nginx
+    app.kubernetes.io/name: sample-app
+    app.kubernetes.io/instance: sample-app
     app.kubernetes.io/version: "1.0.0"
 spec:
   type: ClusterIP
@@ -92,16 +92,16 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: http-nginx
+    app: sample-app
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: nginx-pong
+  name: sample-pong
   namespace: test
   labels:
-    app.kubernetes.io/name: http-nginx
-    app.kubernetes.io/instance: http-nginx
+    app.kubernetes.io/name: sample-app
+    app.kubernetes.io/instance: sample-app
     app.kubernetes.io/version: "1.0.0"
 spec:
   type: ClusterIP
@@ -111,7 +111,7 @@ spec:
       protocol: TCP
       name: http
   selector:
-    app: http-nginx
+    app: sample-app
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -127,17 +127,17 @@ spec:
     - host: test.jnytnai.click
       http:
         paths:
+          - path: /test
+            pathType: ImplementationSpecific
+            backend:
+              service:
+                name: sample-preview
+                port:
+                  number: 80
           - path: /*
             pathType: ImplementationSpecific
             backend:
               service:
-                name: nginx-pingpong-stable
+                name: sample-pingpong-stable
                 port:
                   name: use-annotation
-          - path: /internal/*
-            pathType: ImplementationSpecific
-            backend:
-              service:
-                name: nginx-preview
-                port:
-                  number: 80
