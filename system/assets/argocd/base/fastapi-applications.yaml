@@ -10,7 +10,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/jnytnai0613/blue-green-upgrade-blueprints
+    repoURL: https://github.com/jnytnai0613/eks-playground
     targetRevision: HEAD
   destination:
     server: https://kubernetes.default.svc

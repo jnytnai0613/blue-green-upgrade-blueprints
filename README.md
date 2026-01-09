@@ -23,7 +23,7 @@ Blue-Greenする場合は、各バージョンの EKS クラスター（Blue と
 > なお、今回は全てCLIでの操作を前提としていますが、Argo CDのGUI画面を使用して操作も可能です。
 
 ## ディレクトリ構成
-EKSを作成するModuleは[こちらを参照](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/tree/main/modules/cluster)
+EKSを作成するModuleは[こちらを参照](https://github.com/jnytnai0613/eks-playground/tree/main/modules/cluster)
 ```
 .
 ├── modules/cluster # EKS作成モジュール
@@ -81,11 +81,11 @@ resource "aws_eks_pod_identity_association" "external-dns-identity" {
 #### 以下のGitHubリポジトリURLを任意のものに変える
 
   現在GitHubリポジトリURLは本リポジトリを指していますので、必ずご自身でフォークしたリポジトリ名に置き換えてください。
-  - [system/assets/argocd/app-of-apps-blue.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/app-of-apps-blue.yaml#L9)
-  - [system/assets/argocd/app-of-apps-green.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/app-of-apps-green.yaml#L9)
-  - [system/assets/argocd/base/externaldns-applications.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/base/externaldns-applications.yaml#L13)
-  - [system/assets/argocd/base/fastapi-applications.yaml](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/assets/argocd/base/fastapi-applications.yaml#L13)
-  - [system/common/codebuild/main.tf](https://github.com/jnytnai0613/blue-green-upgrade-blueprints/blob/main/system/common/codebuild/main.tf#L125)
+  - [system/assets/argocd/app-of-apps-blue.yaml](https://github.com/jnytnai0613/eks-playground/blob/main/system/assets/argocd/app-of-apps-blue.yaml#L9)
+  - [system/assets/argocd/app-of-apps-green.yaml](https://github.com/jnytnai0613/eks-playground/blob/main/system/assets/argocd/app-of-apps-green.yaml#L9)
+  - [system/assets/argocd/base/externaldns-applications.yaml](https://github.com/jnytnai0613/eks-playground/blob/main/system/assets/argocd/base/externaldns-applications.yaml#L13)
+  - [system/assets/argocd/base/fastapi-applications.yaml](https://github.com/jnytnai0613/eks-playground/blob/main/system/assets/argocd/base/fastapi-applications.yaml#L13)
+  - [system/common/codebuild/main.tf](https://github.com/jnytnai0613/eks-playground/blob/main/system/common/codebuild/main.tf#L125)
 
 #### backendのS3を作成する
 
@@ -189,7 +189,7 @@ Server:             https://kubernetes.default.svc
 Namespace:          argocd
 URL:                https://argocd.example.com/applications/app-of-apps
 Source:
-- Repo:             https://github.com/jnytnai0613/blue-green-upgrade-blueprints
+- Repo:             https://github.com/jnytnai0613/eks-playground
   Target:           HEAD
   Path:             system/assets/argocd/overlays/green
 SyncWindow:         Sync Allowed

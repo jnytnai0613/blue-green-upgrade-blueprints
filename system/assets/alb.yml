@@ -1,0 +1,33 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: aws-load-balancer-controller
+  namespace: argocd
+  annotations:
+    # 起動を最初に、削除を最後にする
+    # https://argo-cd.readthedocs.io/en/stable/user-guide/sync-waves/
+    # "Hooks and resources are assigned to wave zero by default.
+    # The wave can be negative, so you can create a wave that runs before all other resources."
+    argocd.argoproj.io/sync-wave: "-1"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://aws.github.io/eks-charts
+    chart: aws-load-balancer-controller
+    # https://artifacthub.io/packages/helm/aws/aws-load-balancer-controller
+    targetRevision: 1.13.3
+    helm:
+      values: |
+        serviceAccount:
+          create: true
+          name: aws-load-balancer-controller
+        clusterName: blue
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
